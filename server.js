@@ -13,28 +13,43 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-// Middlewares
-app.use(cors());
+// Middlewares - Updated CORS for Vercel deployment
+app.use(cors({
+  origin: process.env.FRONTEND_URL || '*',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
+}));
 app.use(express.json());
 
-// MongoDB Credentials
-const dbuser = encodeURIComponent(process.env.DBUSER);
-const dbpass = encodeURIComponent(process.env.DBPASS);
+// MongoDB Connection with caching for Vercel serverless
+let cachedDb = null;
+async function connectToDatabase() {
+  if (cachedDb && mongoose.connection.readyState === 1) {
+    console.log("✅ Using cached MongoDB connection");
+    return cachedDb;
+  }
+  
+  const MONGODB_URI = process.env.MONGODB_URI || 
+    `mongodb+srv://${encodeURIComponent(process.env.DBUSER)}:${encodeURIComponent(process.env.DBPASS)}@kinshuk.tizneb5.mongodb.net/merncafe?retryWrites=true&w=majority&appName=kinshuk`;
 
-// Connect to MongoDB Atlas
-mongoose
-  .connect(
-    `mongodb+srv://${dbuser}:${dbpass}@kinshuk.tizneb5.mongodb.net/merncafe?retryWrites=true&w=majority&appName=kinshuk`
-  )
-  .then(() => {
-    console.log("✅ MongoDB connected");
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running at http://localhost:${PORT}`);
+  try {
+    const db = await mongoose.connect(MONGODB_URI, {
+      bufferCommands: false,
+      serverSelectionTimeoutMS: 5000,
     });
-  })
-  .catch((err) => {
+    
+    cachedDb = db;
+    console.log("✅ MongoDB connected successfully!");
+    console.log(`📊 Database: ${mongoose.connection.name}`);
+    return db;
+  } catch (err) {
     console.error("❌ MongoDB connection error:", err.message);
-  });
+    throw err;
+  }
+}
+
+// Initialize database connection
+connectToDatabase();
 
 // API Routes
 app.use("/api/users", userRouter);
@@ -43,15 +58,41 @@ app.use("/api/orders", orderRouter);
 
 // Health Check Route
 app.get("/", (req, res) => {
-  res.status(200).json({ message: "MongoDB is connected ✅" });
+  res.status(200).json({ 
+    message: "🍵 MERN Cafe API is running!",
+    status: "active",
+    environment: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Optional: List first 5 users for testing
 app.get("/check-users", async (req, res) => {
   try {
-    const users = await UserModel.find().limit(5);
-    res.json(users);
+    await connectToDatabase();
+    const users = await UserModel.find().limit(5).select('-password');
+    res.json({ count: users.length, users });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Error:', err.stack);
+  res.status(500).json({ 
+    error: "Something went wrong!",
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
+  });
+});
+
+// Export the Express app for Vercel
+export default app;
+
+// Only start the server if not in Vercel serverless environment
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running at http://localhost:${PORT}`);
+    console.log(`📡 API Base URL: http://localhost:${PORT}/api`);
+  });
+}

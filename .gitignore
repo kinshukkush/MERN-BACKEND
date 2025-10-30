@@ -6,7 +6,8 @@ dist/
 
 # Vite cache
 .vite/
-
+build/
+*.log
 # System files
 .DS_Store
 Thumbs.db
