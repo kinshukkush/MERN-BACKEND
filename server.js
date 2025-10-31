@@ -7,7 +7,7 @@ import cors from "cors";
 import userRouter from "./routes/userRoute.js";
 import productRouter from "./routes/productRoute.js";
 import orderRouter from "./routes/orderRoute.js";
-import UserModel from "./models/userModel.js"; // Optional: Only if you want to test users
+import UserModel from "./models/userModel.js";
 
 dotenv.config();
 const app = express();

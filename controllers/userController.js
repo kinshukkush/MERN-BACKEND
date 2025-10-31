@@ -2,7 +2,10 @@ import userModel from "../models/userModel.js";
 import bcrypt from "bcrypt";
 import {ObjectId} from "mongoose"
 import jwt from "jsonwebtoken";
-const SECRET = "something";
+
+// Use environment variable for JWT secret
+const SECRET = process.env.JWT_SECRET || "something";
+
 const profile = async (req, res) => {
   try {
     const id = req.params.id;
@@ -52,8 +55,12 @@ const getUser = async (req, res) => {
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    
+    console.log('Login attempt for:', email);
+    
     const existingUser = await userModel.findOne({ email });
     if (existingUser) {
+      console.log('User found:', email);
       const isMatch = await bcrypt.compare(password, existingUser.password);
       if (isMatch) {
         const userObj = {
@@ -63,33 +70,48 @@ const login = async (req, res) => {
           role: existingUser.role,
         };
         const token = jwt.sign(userObj, SECRET, { expiresIn: "1h" });
+        console.log('Login successful for:', email);
         res.status(200).json({ ...userObj, token });
       } else {
+        console.log('Invalid password for:', email);
         res.status(400).json({ message: "Invalid Password" });
       }
     } else {
+      console.log('User not found:', email);
       res.status(400).json({ message: "User not found" });
     }
   } catch (err) {
-    console.log(err);
+    console.error('Login error:', err);
     res.status(500).json({ message: "Something went wrong" });
   }
 };
 const register = async (req, res) => {
   try {
     const { firstName, lastName, email, password } = req.body;
+    
+    console.log('Registration attempt for:', email);
+    
+    // Check if user already exists
+    const existingUser = await userModel.findOne({ email });
+    if (existingUser) {
+      console.log('User already exists:', email);
+      return res.status(400).json({ message: "User already exists" });
+    }
+    
     const hashedpwd = await bcrypt.hash(password, 10);
     const user = {
       firstName,
       lastName,
       email,
       password: hashedpwd,
+      role: "user" // Default role
     };
     const result = await userModel.create(user);
-    res.status(201).json(result);
+    console.log('User registered successfully:', email);
+    res.status(201).json({ message: "User registered successfully", user: { id: result._id, email: result.email } });
   } catch (err) {
-    console.log(err);
-    res.status(500).json({ message: "Something went wrong" });
+    console.error('Registration error:', err);
+    res.status(500).json({ message: "Something went wrong", error: err.message });
   }
 };
 

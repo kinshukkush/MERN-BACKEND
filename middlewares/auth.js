@@ -1,5 +1,7 @@
 import jwt from "jsonwebtoken";
-const SECRET = "something";
+
+// Use environment variable for JWT secret
+const SECRET = process.env.JWT_SECRET || "something";
 
 const authenticate = (req, res, next) => {
   try {
