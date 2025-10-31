@@ -22,44 +22,44 @@ app.use(cors({
 app.use(express.json());
 
 // MongoDB Connection with caching for Vercel serverless
-let cachedDb = null;
+let isConnected = false;
+
 async function connectToDatabase() {
-  if (cachedDb && mongoose.connection.readyState === 1) {
+  if (isConnected && mongoose.connection.readyState === 1) {
     console.log("✅ Using cached MongoDB connection");
-    return cachedDb;
+    return;
   }
   
   const MONGODB_URI = process.env.MONGODB_URI || 
     `mongodb+srv://${encodeURIComponent(process.env.DBUSER)}:${encodeURIComponent(process.env.DBPASS)}@kinshuk.tizneb5.mongodb.net/merncafe?retryWrites=true&w=majority&appName=kinshuk`;
 
   try {
-    const db = await mongoose.connect(MONGODB_URI, {
-      bufferCommands: false,
+    await mongoose.connect(MONGODB_URI, {
       serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
     });
     
-    cachedDb = db;
+    isConnected = true;
     console.log("✅ MongoDB connected successfully!");
     console.log(`📊 Database: ${mongoose.connection.name}`);
-    return db;
   } catch (err) {
     console.error("❌ MongoDB connection error:", err.message);
+    isConnected = false;
     throw err;
   }
 }
 
-// Initialize database connection
-connectToDatabase();
-
 // Middleware to ensure database connection before each request
 app.use(async (req, res, next) => {
   try {
-    if (mongoose.connection.readyState !== 1) {
-      await connectToDatabase();
-    }
+    await connectToDatabase();
     next();
   } catch (error) {
-    res.status(503).json({ message: "Database connection error", error: error.message });
+    console.error("Connection middleware error:", error);
+    res.status(503).json({ 
+      message: "Database connection error", 
+      error: error.message 
+    });
   }
 });
 
