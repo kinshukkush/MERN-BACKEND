@@ -54,4 +54,18 @@ const updateOrder = async (req, res) => {
   }
 };
 
-export { newOrder, showOrders, showAllOrders, updateOrder };
+const deleteOrder = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const result = await orderModel.deleteOne({ _id: id });
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+    res.status(200).json({ message: "Order deleted successfully", result });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: "Something went wrong" });
+  }
+};
+
+export { newOrder, showOrders, showAllOrders, updateOrder, deleteOrder };
