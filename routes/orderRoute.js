@@ -9,6 +9,12 @@ import {
 } from "../controllers/orderController.js";
 const Router = express.Router();
 
+// Debug middleware
+Router.use((req, res, next) => {
+  console.log(`📦 Order Route: ${req.method} ${req.path}`);
+  next();
+});
+
 Router.post("/", newOrder);
 Router.get("/", authenticate, authorize("admin"), showAllOrders);
 Router.patch("/:id", authenticate, authorize("admin"), updateOrder);

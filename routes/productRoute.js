@@ -4,14 +4,19 @@ import { addProduct,showProducts,deleteProduct,updateProduct,getProduct,displayP
 
 const Router = express.Router();
 
+// Debug middleware
+Router.use((req, res, next) => {
+  console.log(`📦 Product Route: ${req.method} ${req.path}`);
+  next();
+});
 
-//user 
+//user - public routes (no auth needed)
 Router.get("/all", displayProducts);
 
-//admin - protected routes
+//admin - protected routes (auth required)
 Router.get("/", authenticate, authorize("admin"), showProducts);
+Router.get("/:id", getProduct); // Public - for viewing single product
 Router.post("/", authenticate, authorize("admin"), addProduct);
-Router.get("/:id", authenticate, authorize("admin"), getProduct);
 Router.patch("/:id", authenticate, authorize("admin"), updateProduct);
 Router.delete("/:id", authenticate, authorize("admin"), deleteProduct);
 
