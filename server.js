@@ -51,6 +51,18 @@ async function connectToDatabase() {
 // Initialize database connection
 connectToDatabase();
 
+// Middleware to ensure database connection before each request
+app.use(async (req, res, next) => {
+  try {
+    if (mongoose.connection.readyState !== 1) {
+      await connectToDatabase();
+    }
+    next();
+  } catch (error) {
+    res.status(503).json({ message: "Database connection error", error: error.message });
+  }
+});
+
 // API Routes
 app.use("/api/users", userRouter);
 app.use("/api/products", productRouter);
