@@ -49,7 +49,6 @@ async function connectToDatabase() {
   }
 }
 
-// Middleware to ensure database connection before each request
 app.use(async (req, res, next) => {
   try {
     await connectToDatabase();
@@ -63,7 +62,6 @@ app.use(async (req, res, next) => {
   }
 });
 
-// API Routes
 app.use("/api/users", userRouter);
 app.use("/api/products", productRouter);
 app.use("/api/orders", orderRouter);
